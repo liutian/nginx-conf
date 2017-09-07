@@ -1,0 +1,29 @@
+# 普通web页面
+location /web {
+    alias /home/nginx_web/web;
+
+    if ($uri ~* \.(css|js|png|jpg|gif|otf|eot|svg|ttf|woff|woff2)$) {
+        expires max;
+        add_header cache force;
+    }
+    try_files $uri $uri/ /index.html =404;
+}
+
+# 代理后端接口
+location /web/api/ {
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Host $host;
+    proxy_pass http://api_nodes/;
+    proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
+}
+
+# 代理websocket
+location /socket/ {
+    add_header proxy_server $upstream_addr; #记录后端服务器地址
+    proxy_set_header Upgrade $http_upgrade; #协议升级
+    proxy_set_header Connection "upgrade";#协议升级
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Host $host;
+    proxy_pass http://socket_nodes/;
+    proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
+}
