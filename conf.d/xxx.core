@@ -26,6 +26,17 @@ location /web/api/ {
     proxy_set_header Host $host;
     proxy_pass http://api_nodes/;
     proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
+
+    # cors 浏览器跨域方案
+    add_header Access-Control-Allow-Origin "$http_origin";
+    add_header Access-Control-Allow-Credentials "true";
+    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+    add_header Access-Control-Allow-Headers "Content-Type,Accept,Origin,User-Agent,Cache-Control,Keep-Alive,X-Requested-With,If-Modified-Since";
+    if ($request_method = OPTIONS) {
+      add_header Content-Length 0;
+      add_header Content-Type text/plain;
+      return 200;
+    }
 }
 
 # 代理websocket
@@ -37,4 +48,11 @@ location /socket/ {
     proxy_set_header Host $host;
     proxy_pass http://socket_nodes/;
     proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
+}
+
+# 强制浏览器下载文件而不是直接展示文件内容，因为有些上传到服务器上的附加可能不是utf-8格式，而且如果浏览器默认展示文件内容时就会出现乱码的情况
+location /file {
+  if ($uri ~* \.(txt)$){
+    add_header Content-Disposition 'attachment;';
+  }
 }
