@@ -1,53 +1,60 @@
 # 普通web页面
 location /web {
-    alias /home/nginx_web/web;
+  alias /home/nginx_web/web;
 
-    if ($uri ~* \.(css|js|png|jpg|gif|otf|eot|svg|ttf|woff|woff2)$) {
-        expires max;
-        add_header cache force;
-    }
-    try_files $uri $uri/ /index.html =404;
+  if ($uri ~* \.(css|js|png|jpg|gif|otf|eot|svg|ttf|woff|woff2)$) {
+    expires max;
+    add_header cache force;
+  }
+  try_files $uri $uri/ /index.html =404;
 }
 
 # 普通web页面
 location / {
-    alias /home/nginx_web/web/;#最后的斜杠很重要
+  alias /home/nginx_web/web/;#最后的斜杠很重要
 
-    if ($uri ~* \.(css|js|png|jpg|gif|otf|eot|svg|ttf|woff|woff2)$) {
-        expires max;
-        add_header cache force;
-    }
-    try_files $uri $uri/ /index.html =404;
+  if ($uri ~* \.(css|js|png|jpg|gif|otf|eot|svg|ttf|woff|woff2)$) {
+    expires max;
+    add_header cache force;
+  }
+  try_files $uri $uri/ /index.html =404;
 }
 
 # 代理后端接口
 location /web/api/ {
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header Host $host;
-    proxy_pass http://api_nodes/;
-    proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
+  # 配合upstream中keepalive;
+  proxy_http_version 1.1;
+  proxy_set_header Connection "";
 
-    # cors 浏览器跨域方案
-    add_header Access-Control-Allow-Origin "$http_origin";
-    add_header Access-Control-Allow-Credentials "true";
-    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
-    add_header Access-Control-Allow-Headers "Content-Type,Accept,Origin,User-Agent,Cache-Control,Keep-Alive,X-Requested-With,If-Modified-Since";
-    if ($request_method = OPTIONS) {
-      add_header Content-Length 0;
-      add_header Content-Type text/plain;
-      return 200;
-    }
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header Host $host;
+  proxy_pass http://backend/;
+  proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
+  # 健康检查，如果发现后端服务不健康则负载均衡时不将请求转发到该服务器上
+  #health_check match=welcome;
+
+  # cors 浏览器跨域方案
+  add_header Access-Control-Allow-Origin "$http_origin";
+  add_header Access-Control-Allow-Credentials "true";
+  add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+  add_header Access-Control-Allow-Headers "Content-Type,Accept,Origin,User-Agent,Cache-Control,Keep-Alive,X-Requested-With,If-Modified-Since";
+  if ($request_method = OPTIONS) {
+    add_header Access-Control-Max-Age 1728000; # 20 天
+    add_header Content-Length 0;
+    add_header Content-Type text/plain;
+    return 200;
+  }
 }
 
 # 代理websocket
 location /socket/ {
-    add_header proxy_server $upstream_addr; #记录后端服务器地址
-    proxy_set_header Upgrade $http_upgrade; #协议升级
-    proxy_set_header Connection "upgrade";#协议升级
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header Host $host;
-    proxy_pass http://socket_nodes/;
-    proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
+  add_header proxy_server $upstream_addr; #记录后端服务器地址
+  proxy_set_header Upgrade $http_upgrade; #协议升级
+  proxy_set_header Connection "upgrade";#协议升级
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header Host $host;
+  proxy_pass http://socket_nodes/;
+  proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
 }
 
 # 强制浏览器下载文件而不是直接展示文件内容，因为有些上传到服务器上的附加可能不是utf-8格式，而且如果浏览器默认展示文件内容时就会出现乱码的情况
@@ -55,4 +62,34 @@ location /file {
   if ($uri ~* \.(txt)$){
     add_header Content-Disposition 'attachment;';
   }
+}
+
+# 列出文件目录
+location /images {
+  root   /data/images;
+  autoindex on;
+  autoindex_localtime on;
+}
+
+# 生产一像素图片
+location = /_.gif {
+  empty_gif;
+}
+
+# 将代理请求永久保存到root/alias目录中
+location /images/ {
+  root               /data/www;
+  error_page         404 = @fetch;
+}
+location @fetch {
+  # 表示只能内部使用
+  internal;
+
+  proxy_pass         http://backend;
+  proxy_store        on;
+  proxy_store_access user:rw group:rw all:r;
+  # 先把代理请求的结果保存到临时文件中，然后在保存成最终文件
+  proxy_temp_path    /data/temp;
+
+  root               /data/www;
 }
