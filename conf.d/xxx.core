@@ -34,11 +34,13 @@ location /web/api/ {
   #health_check match=welcome;
 
   # cors 浏览器跨域方案
-  add_header Access-Control-Allow-Origin "$http_origin";
-  add_header Access-Control-Allow-Credentials "true";
-  add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
-  add_header Access-Control-Allow-Headers "Content-Type,Accept,Origin,User-Agent,Cache-Control,Keep-Alive,X-Requested-With,If-Modified-Since";
+  
   if ($request_method = OPTIONS) {
+    add_header Access-Control-Allow-Origin "$http_origin";
+    add_header Access-Control-Allow-Credentials "true";
+    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+    add_header Access-Control-Allow-Headers "Content-Type,Accept,Origin,User-Agent,Cache-Control,Keep-Alive,X-Requested-With,If-Modified-Since";
+  
     add_header Access-Control-Max-Age 1728000; # 20 天
     add_header Content-Length 0;
     add_header Content-Type text/plain;
