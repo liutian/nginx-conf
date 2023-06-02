@@ -1,6 +1,14 @@
 ### 命令行
 - 测试配置文件是否有效：`nginx -t -c <***.conf>`
 
+### nginx中proxy_pass小斜杠
+
+在location 都以 / 结尾时：
+- 如果proxy_pass配置值 包含 / 拼接转发路径时就去掉 location 匹配路径部分
+- 如果proxy_pass配置值 不包含 / 拼接转发路径时就保留 location 匹配路径部分
+
+> https://zhuanlan.zhihu.com/p/95754949
+
 ### 备忘录
 - 配置项通常允许配置变量
 - server_name配置规则？
